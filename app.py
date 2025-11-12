@@ -2,41 +2,40 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 import joblib
 
-# Load the saved model + encoders
+app = FastAPI(title="Food Recommendation API", version="0.1.0")
+
+# Load model bundle
 bundle = joblib.load("food_recommender_bundle.pkl")
 model = bundle["model"]
 le_spice = bundle["le_spice"]
 le_taste = bundle["le_taste"]
 le_diet = bundle["le_diet"]
 
-# Initialize FastAPI app
-app = FastAPI(title="Food Recommendation API")
-
-# Input format
+# Input schema
 class FoodInput(BaseModel):
     spice: str
     taste: str
     diet: str
 
-# Root route
 @app.get("/")
 def home():
-    return {
-        "message": "Welcome to the Food Recommendation API!",
-        "note": "Use /predict endpoint with JSON: {'spice': 'high', 'taste': 'sweet', 'diet': 'veg'}"
-    }
+    return {"message": "Welcome to Food Recommendation API"}
 
-# Prediction route
 @app.post("/predict")
-def predict_food(data: FoodInput):
+def predict_food(input_data: FoodInput):
+    # Convert inputs to the same format as training
+    spice = input_data.spice.strip().capitalize()
+    taste = input_data.taste.strip().capitalize()
+    diet = input_data.diet.strip().capitalize()
+
+    # Encode
     try:
-        # Normalize input (to handle upper/lowercase)
-        spice = le_spice.transform([data.spice.lower()])[0]
-        taste = le_taste.transform([data.taste.lower()])[0]
-        diet = le_diet.transform([data.diet.lower()])[0]
+        spice_encoded = le_spice.transform([spice])[0]
+        taste_encoded = le_taste.transform([taste])[0]
+        diet_encoded = le_diet.transform([diet])[0]
+    except ValueError as e:
+        return {"error": f"Invalid input: {e}"}
 
-        pred = model.predict([[spice, taste, diet]])[0]
-        return {"Recommended Dish": pred}
-
-    except Exception as e:
-        return {"error": str(e)}
+    # Predict
+    prediction = model.predict([[spice_encoded, taste_encoded, diet_encoded]])[0]
+    return {"predicted_food": prediction}

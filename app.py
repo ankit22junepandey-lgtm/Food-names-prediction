@@ -2,45 +2,41 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 import joblib
 
-# Load the saved models + vectorizer
-bundle = joblib.load("news_models.pkl")
-vectorizer = bundle["vectorizer"]
-LR = bundle["LR"]
-DT = bundle["DT"]
-GB = bundle["GB"]
-RF = bundle["RF"]
+# Load the saved model + encoders
+bundle = joblib.load("food_recommender.pkl")
+model = bundle["model"]
+le_spice = bundle["le_spice"]
+le_taste = bundle["le_taste"]
+le_diet = bundle["le_diet"]
 
-# FastAPI app
-app = FastAPI(title="Fake News Detection API")
+# Initialize FastAPI app
+app = FastAPI(title="Food Recommendation API")
 
-# Input schema
-class NewsInput(BaseModel):
-    text: str
+# Input format
+class FoodInput(BaseModel):
+    spice: str
+    taste: str
+    diet: str
 
-# Output label function
-def output_label(n):
-    return "✅ Real News" if n == 1 else "❌ Fake News"
-
-# Root endpoint
+# Root route
 @app.get("/")
 def home():
-    return {"message": "Welcome to Fake News Detection API! Use /predict to test."}
-
-# Prediction endpoint
-@app.post("/predict/")
-def predict(news: NewsInput):
-    # Vectorize input text
-    new_xv_test = vectorizer.transform([news.text])
-
-    # Predictions
-    pred_LR = LR.predict(new_xv_test)[0]
-    pred_DT = DT.predict(new_xv_test)[0]
-    pred_GB = GB.predict(new_xv_test)[0]
-    pred_RF = RF.predict(new_xv_test)[0]
-
     return {
-        "Logistic Regression": output_label(pred_LR),
-        "Decision Tree": output_label(pred_DT),
-        "Gradient Boosting": output_label(pred_GB),
-        "Random Forest": output_label(pred_RF)
+        "message": "Welcome to the Food Recommendation API!",
+        "note": "Use /predict endpoint with JSON: {'spice': 'high', 'taste': 'sweet', 'diet': 'veg'}"
     }
+
+# Prediction route
+@app.post("/predict")
+def predict_food(data: FoodInput):
+    try:
+        # Normalize input (to handle upper/lowercase)
+        spice = le_spice.transform([data.spice.lower()])[0]
+        taste = le_taste.transform([data.taste.lower()])[0]
+        diet = le_diet.transform([data.diet.lower()])[0]
+
+        pred = model.predict([[spice, taste, diet]])[0]
+        return {"Recommended Dish": pred}
+
+    except Exception as e:
+        return {"error": str(e)}

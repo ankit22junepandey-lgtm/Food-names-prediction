@@ -3,7 +3,7 @@ from pydantic import BaseModel
 import joblib
 
 # Load the saved model + encoders
-bundle = joblib.load("food_recommender.pkl")
+bundle = joblib.load("food_recommender_bundle.pkl")
 model = bundle["model"]
 le_spice = bundle["le_spice"]
 le_taste = bundle["le_taste"]

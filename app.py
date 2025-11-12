@@ -23,19 +23,22 @@ def home():
 
 @app.post("/predict")
 def predict_food(input_data: FoodInput):
-    # Convert inputs to the same format as training
-    spice = input_data.spice.strip().capitalize()
-    taste = input_data.taste.strip().capitalize()
-    diet = input_data.diet.strip().capitalize()
+    # Clean and normalize user input (keep hyphen)
+    spice = input_data.spice.strip().title()
+    taste = input_data.taste.strip().title()
+    diet = input_data.diet.strip().title()
 
-    # Encode
+    # Encode input values
     try:
         spice_encoded = le_spice.transform([spice])[0]
         taste_encoded = le_taste.transform([taste])[0]
         diet_encoded = le_diet.transform([diet])[0]
     except ValueError as e:
-        return {"error": f"Invalid input: {e}"}
+        return {
+            "error": f"Invalid input value: {e}",
+            "hint": "Use correct spelling and capitalization, e.g. 'High', 'Sweet', 'Non-Veg', 'Veg'"
+        }
 
-    # Predict
+    # Make prediction
     prediction = model.predict([[spice_encoded, taste_encoded, diet_encoded]])[0]
     return {"predicted_food": prediction}
